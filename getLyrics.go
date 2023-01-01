@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
+	lyrics "github.com/rhnvrm/lyric-api-go"
 	"github.com/zmb3/spotify/v2"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
 	"golang.org/x/oauth2/clientcredentials"
@@ -99,4 +100,24 @@ func getLyrics() {
 	artist := "Kendrick Lamar"
 	albumIDList := getAllAlbums(ctx, artist, *client)
 	songList := getAllSongs(ctx, albumIDList, *client)
+
+	f, err := os.OpenFile("lyrics.txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	defer f.Close()
+
+	for _, song := range songList {
+		l := lyrics.New()
+
+		lyric, err := l.Search(artist, song)
+		if err != nil {
+			fmt.Printf("Lyrics for %v-%v were not found", artist, song)
+		}
+		fmt.Println(song)
+		if _, err = f.WriteString(lyric + "\n"); err != nil {
+			panic(err)
+		}
+	}
 }
