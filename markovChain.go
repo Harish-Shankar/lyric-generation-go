@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"flag"
+	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 	"strings"
 	"unicode"
@@ -58,6 +60,55 @@ func isCapital(word string) bool {
 	return unicode.IsUpper(r)
 }
 
+func (c *Chain) genSentence(n int, startWithCapital bool) string {
+	var i int
+	var words []string
+	var prefix string
+
+	if startWithCapital {
+		i = rand.Intn(c.capitalized)
+	} else {
+		i = rand.Intn(len(c.suffix))
+	}
+
+	for prefix = range c.suffix {
+		if startWithCapital && !isCapital(prefix) {
+			continue
+		}
+		if i == 0 {
+			break
+		}
+		i--
+	}
+
+	words = append(words, prefix)
+	prefixWords := strings.Split(prefix, " ")
+	n -= len(prefixWords)
+	for {
+		wordChoices := c.suffix[prefix]
+		if len(wordChoices) == 0 {
+			break
+		}
+		i = rand.Intn(len(wordChoices))
+		suffix := wordChoices[i]
+		words = append(words, suffix)
+
+		n--
+		if n < 0 || isSentenceEnd(suffix) {
+			break
+		}
+		prefixWords = append(prefixWords[1:], suffix)
+		prefix = strings.Join(prefixWords, " ")
+	}
+	return strings.Join(words, " ")
+
+}
+
+func isSentenceEnd(word string) bool {
+	w, _ := utf8.DecodeLastRuneInString(word)
+	return w == '.' || w == '?' || w == '!'
+}
+
 func main() {
 	inputFile := flag.String("in", "lyrics.txt", "input file")
 	numWords := flag.Int("n", 1, "number of words to use as a prefix")
@@ -69,5 +120,19 @@ func main() {
 	c, errChain := newChainFromFile(*inputFile, *numWords)
 	if errChain != nil {
 		log.Fatal(errChain)
+	}
+
+	f, errFile := os.OpenFile("generatedLyrics.txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	os.Truncate("generatedLyrics.txt", 0)
+	if errFile != nil {
+		log.Fatal(errFile)
+	}
+
+	defer f.Close()
+
+	for i := 0; i < *numRuns; i++ {
+		out := c.genSentence(*wordsPerRun, *startOnCapital)
+		fmt.Println(out)
+		f.WriteString(out + "\n")
 	}
 }
