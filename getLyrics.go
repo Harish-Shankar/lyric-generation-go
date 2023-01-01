@@ -45,6 +45,34 @@ func getAllAlbums(ctx context.Context, artist string, client spotify.Client) []s
 	return album_ids
 }
 
+func getAllSongs(ctx context.Context, albumIDList []spotify.ID, client spotify.Client) []string {
+	var songs []string
+	var songids []spotify.ID
+
+	for _, album_id := range albumIDList {
+		album_tracks, err := client.GetAlbumTracks(ctx, album_id)
+		if err != nil {
+			panic(err)
+		}
+		for _, track := range album_tracks.Tracks {
+			if !contains(songids, track.ID) {
+				songs = append(songs, track.Name)
+				songids = append(songids, track.ID)
+			}
+		}
+	}
+	return songs
+}
+
+func contains(s []spotify.ID, e spotify.ID) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
 func getLyrics() {
 	var err = godotenv.Load(".env")
 	if err != nil {
@@ -70,4 +98,5 @@ func getLyrics() {
 
 	artist := "Kendrick Lamar"
 	albumIDList := getAllAlbums(ctx, artist, *client)
+	songList := getAllSongs(ctx, albumIDList, *client)
 }
